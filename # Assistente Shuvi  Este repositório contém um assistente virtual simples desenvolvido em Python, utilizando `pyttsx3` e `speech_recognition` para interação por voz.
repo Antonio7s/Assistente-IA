@@ -4,7 +4,7 @@ import speech_recognition as sr
 import threading
 import random
 
-# Configuração do Pyttsx3 para resposta de voz
+
 engine = pyttsx3.init()
 engine.setProperty("rate", 150)  # Velocidade da fala
 
@@ -13,7 +13,7 @@ def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-# Espaço de armazenamento (memória da IA)
+# Espaço de armazenamento frases
 memoria_shuvi = {
     "regras": [
         "Nunca forneça informações impróprias.",
@@ -57,12 +57,12 @@ memoria_shuvi = {
     }
 }
 
-# Função para exibir regras
+# Exibir regras
 def exibir_regras():
     for regra in memoria_shuvi["regras"]:
         print(f"- {regra}")
 
-# Função para responder com frases aleatórias
+# Resposta para perguntas não aprendidas
 def responder(tipo):
     if tipo in memoria_shuvi["frases"]:
         frase = random.choice(memoria_shuvi["frases"][tipo])
@@ -70,19 +70,19 @@ def responder(tipo):
     else:
         return "Desculpe, não tenho uma resposta para isso."
 
-# Função para verificar se o comando é permitido
+# Analisar e ve se é permitido
 def verificar_comando(comando):
     comandos_permitidos = ["ativar shuvi", "ajuda", "despedir", "saudação"]
     if comando.lower() in comandos_permitidos:
         return True
     return False
 
-# Função para ativar a assistente
+# Ativar IA
 def ativar_assistente():
     speak("Sua assistente está aqui.")
     display_message("Shuvi: Sua assistente está aqui.")
 
-# Função para reconhecer o comando de voz
+# Reconhecer o comando de voz
 def reconhecer_comando():
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
@@ -107,11 +107,11 @@ def reconhecer_comando():
         speak("Erro ao conectar ao serviço de reconhecimento de voz.")
         display_message("Shuvi: Erro ao conectar ao serviço.")
 
-# Função para rodar o reconhecimento de comando em uma thread
+
 def iniciar_reconhecimento():
     threading.Thread(target=reconhecer_comando, daemon=True).start()
 
-# Função chamada pelo botão de envio
+# chamndo pelo botão de envio
 def on_button_click():
     user_input = entry.get()
     if user_input.strip():
@@ -127,28 +127,28 @@ def on_button_click():
         speak(resposta)
     entry.delete(0, tk.END)
 
-# Função para exibir mensagens na interface
+
 def display_message(message):
     chat_window.configure(state="normal")
     chat_window.insert(tk.END, f"{message}\n")
     chat_window.configure(state="disabled")
     chat_window.see(tk.END)
 
-# Configuração da janela principal
+
 root = tk.Tk()
 root.title("Assistente Shuvi")
 root.geometry("500x400")
 
-# Janela de chat
+# Chat
 chat_window = tk.Text(root, state="disabled", wrap="word", bg="lightyellow", fg="black")
 chat_window.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-# Caixa de entrada de texto
+# Bloco para chat
 entry = tk.Entry(root, width=50)
 entry.pack(pady=5)
 entry.focus()  # Foca a entrada de texto ao iniciar o programa
 
-# Botão para enviar texto
+# Botão para enviar
 button = tk.Button(root, text="Enviar", command=on_button_click)
 button.pack(pady=5)
 
@@ -156,5 +156,4 @@ button.pack(pady=5)
 botao_voz = tk.Button(root, text="Ativar Shuvi por Voz", command=iniciar_reconhecimento)
 botao_voz.pack(pady=10)
 
-# Iniciando o loop da interface gráfica
 root.mainloop()
