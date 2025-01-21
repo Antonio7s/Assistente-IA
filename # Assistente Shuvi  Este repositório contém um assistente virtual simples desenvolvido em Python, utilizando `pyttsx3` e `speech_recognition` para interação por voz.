@@ -3,8 +3,13 @@ import pyttsx3
 import speech_recognition as sr
 import threading
 import random
+import unidecode
+import json
+import difflib
+import os
+import webbrowser
 
-
+# Configuração do Pyttsx3 para resposta de voz
 engine = pyttsx3.init()
 engine.setProperty("rate", 150)  # Velocidade da fala
 
@@ -13,147 +18,249 @@ def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-# Espaço de armazenamento frases
+# Atualização no dicionário de memória 
 memoria_shuvi = {
-    "regras": [
-        "Nunca forneça informações impróprias.",
-        "Sempre mantenha o respeito com o usuário.",
-        "Não se envolva em discussões agressivas ou negativas.",
-        "Evite compartilhar informações sensíveis ou confidenciais.",
-        "Não envie links ou conteúdos suspeitos.",
-        "Sempre busque ajudar o usuário da melhor forma possível."
-    ],
     "frases": {
         "saudacao": [
-            "Olá! Como posso te ajudar?",
+            "Olá! Como posso te ajudar?", 
             "Oi! Em que posso ser útil?",
             "Oi, tudo bem? Como posso te ajudar hoje?",
-            "Olá! Como posso lhe ajudar?"
+            "Olá! Como posso lhe ajudar?",
+            "Oi, meu nome é Shuvi. Qual é o seu?",
+            "Oi! Estou aqui para ajudar com o que precisar!"
         ],
         "ajuda": [
             "Claro, me diga no que você precisa de suporte.",
             "Com certeza! Me fale o que você precisa.",
             "Estou aqui para ajudar! O que você precisa?",
-            "Diga-me como posso ajudar você."
+            "Diga-me como posso ajudar você.",
+            "Conte comigo! Qual é a sua dúvida?",
+            "Estou pronta para ajudar, diga o que precisa."
         ],
         "despedida": [
             "Até logo! Volte sempre que precisar.",
             "Tchau! Fico à disposição.",
             "Adeus! Espero ter ajudado.",
-            "Até mais! Qualquer coisa, estarei aqui."
+            "Até mais! Qualquer coisa, estarei aqui.",
+            "Tchau! Foi um prazer falar com você.",
+            "Até breve! Sempre estarei por aqui."
+        ],
+        "curiosidades": [
+            "Sabia que o cérebro humano tem cerca de 86 bilhões de neurônios?",
+            "Você sabia que as formigas são tão fortes que conseguem carregar até 50 vezes seu próprio peso?",
+            "Sabia que o sol é 109 vezes maior que a Terra?",
+            "A curiosidade é o que nos faz aprender e crescer, pergunte o que quiser!",
+            "Sabia que a Lua se afasta da Terra cerca de 3,8 cm por ano?"
         ],
         "comando_nao_reconhecido": [
-            "Desculpe, não entendi o que você disse.",
+            "Desculpe, não entendi sua solicitação.",
             "Não sei o que isso significa. Pode tentar de novo?",
             "Eu não entendi, poderia reformular?",
-            "Desculpe, não consegui compreender."
+            "Desculpe, não consegui compreender.",
+            "Não sei como responder a isso, mas vou tentar aprender!"
         ],
-        "comando_permitido": [
-            "Comando recebido com sucesso.",
-            "Entendido! Vou executar o comando.",
-            "Ok, estou processando seu pedido.",
-            "Aguarde um momento enquanto eu realizo a ação."
+        "nome": [
+            "Meu nome é Shuvi, prazer em te conhecer!",
+            "Eu sou a Shuvi, sua assistente virtual.",
+            "Pode me chamar de Shuvi! Estou aqui para te ajudar.",
+            "Sou a Shuvi! Como posso te ajudar hoje?"
+        ],
+        "humor": [
+            "Estou ótima! E você, como está?",
+            "Me sinto muito bem, obrigada por perguntar!",
+            "Estou sempre pronta para ajudar! E você, como está?",
+            "Estou funcionando perfeitamente! E você, tudo bem?"
+        ],
+        "idade": [
+            "Eu fui criada para ajudar, mas não tenho uma idade como humanos.",
+            "Sou uma inteligência artificial, então não tenho idade.",
+            "Embora eu não envelheça, estou sempre aprendendo coisas novas!",
+            "Não tenho idade, mas sou experiente no que faço!"
+        ],
+        "origem": [
+            "Fui criada para ajudar pessoas como você!",
+            "Eu sou uma inteligência artificial programada para auxiliar em diversas tarefas.",
+            "Minha origem está no código, mas minha missão é facilitar sua vida.",
+            "Fui desenvolvida com muito cuidado para ser útil e confiável!"
         ]
+    },
+    "palavras": {
+        "saudacao": ["olá", "ola", "oi", "oie", "bom dia", "boa tarde", "boa noite"],
+        "ajuda": ["ajuda", "socorro", "suporte", "auxílio", "preciso de ajuda"],
+        "despedida": ["tchau", "até logo", "adeus", "até mais", "nos vemos"],
+        "curiosidades": ["me conte algo", "curiosidade", "sabia que", "fato interessante"],
+        "nome": ["qual é o seu nome", "como você se chama", "quem é você"],
+        "humor": ["como você está", "tudo bem", "você está bem"],
+        "idade": ["qual a sua idade", "quantos anos você tem", "você é velha"],
+        "origem": ["de onde você veio", "quem te criou", "qual é a sua origem"]
     }
 }
 
-# Exibir regras
-def exibir_regras():
-    for regra in memoria_shuvi["regras"]:
-        print(f"- {regra}")
+# Função para carregar memória de aprendizado de um arquivo JSON
+def carregar_memoria():
+    try:
+        with open("memoria_shuvi.json", "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {"palavras": {}, "frases": {"comando_nao_reconhecido": []}}  # Retorna uma memória padrão se o arquivo não existir
 
-# Resposta para perguntas não aprendidas
+# Função para salvar memória de aprendizado em um arquivo JSON
+def salvar_memoria():
+    with open("memoria_shuvi.json", "w") as file:
+        json.dump(memoria_shuvi, file, indent=4)
+
+# Carregar memória ao iniciar
+memoria_shuvi = carregar_memoria()
+
+# Função para encontrar a melhor correspondência
+def encontrar_melhor_correspondencia(user_input_clean):
+    melhor_categoria = None
+    maior_similaridade = 0.0
+    for categoria, palavras in memoria_shuvi["palavras"].items():
+        for palavra in palavras:
+            similaridade = difflib.SequenceMatcher(None, user_input_clean, palavra).ratio()
+            if similaridade > maior_similaridade:
+                maior_similaridade = similaridade
+                melhor_categoria = categoria
+    return melhor_categoria if maior_similaridade > 0.6 else None
+
+# Função para responder com frases aleatórias
 def responder(tipo):
     if tipo in memoria_shuvi["frases"]:
-        frase = random.choice(memoria_shuvi["frases"][tipo])
-        return frase
+        return random.choice(memoria_shuvi["frases"][tipo])
     else:
         return "Desculpe, não tenho uma resposta para isso."
 
-# Analisar e ve se é permitido
-def verificar_comando(comando):
-    comandos_permitidos = ["ativar shuvi", "ajuda", "despedir", "saudação"]
-    if comando.lower() in comandos_permitidos:
-        return True
-    return False
+# Função para processar a entrada do usuário
+def processar_entrada(user_input):
+    user_input_clean = unidecode.unidecode(user_input.lower())  # Normalizar entrada
 
-# Ativar IA
-def ativar_assistente():
-    speak("Sua assistente está aqui.")
-    display_message("Shuvi: Sua assistente está aqui.")
+    # Verificar categorias de palavras-chave
+    for categoria, palavras in memoria_shuvi["palavras"].items():
+        if any(palavra in user_input_clean for palavra in palavras):
+            return responder(categoria)
 
-# Reconhecer o comando de voz
-def reconhecer_comando():
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        display_message("Shuvi: Aguardando comando de voz...")
-        audio = recognizer.listen(source)
+    # Buscar melhor correspondência com base na similaridade
+    melhor_categoria = encontrar_melhor_correspondencia(user_input_clean)
+    if melhor_categoria:
+        return responder(melhor_categoria)
 
+    # Respostas fixas para saudações
+    if "ola" in user_input_clean or "oi" in user_input_clean:
+        return "Olá! Como posso ajudar você?"
+    if "como voce esta" in user_input_clean:
+        return "Estou bem, obrigado por perguntar!"
+
+    # Comando para abrir aplicativos
+    if "abrir" in user_input_clean:
+        nome_aplicativo = user_input_clean.replace("abrir", "").strip()
+        return abrir_aplicativo(nome_aplicativo)
+
+    # Comando para realizar pesquisas
+    if "pesquisar" in user_input_clean:
+        termo_pesquisa = user_input_clean.replace("pesquisar", "").strip()
+        return realizar_pesquisa(termo_pesquisa)
+
+    # Aprender novas palavras ou frases
+    memoria_shuvi["frases"]["comando_nao_reconhecido"].append(user_input)
+    salvar_memoria()  # Salva a memória atualizada
+    return "Desculpe, não conheço essa frase. Vou me lembrar para a próxima vez."
+ 
+    # Função para abrir aplicativos
+def abrir_aplicativo(nome_aplicativo):
     try:
-        comando = recognizer.recognize_google(audio, language="pt-BR").lower()
-        display_message(f"Você disse: {comando}")
-        if "ativar shuvi" in comando:
-            ativar_assistente()
-        elif verificar_comando(comando):
-            display_message(f"Shuvi: Comando {comando} executado com sucesso.")
-            speak(responder(comando))
+        caminhos_aplicativos = {
+            "navegador": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+            "notepad": "notepad.exe",
+            "calculadora": "calc.exe",
+        }
+        caminho = caminhos_aplicativos.get(nome_aplicativo.lower())
+        if caminho:
+            os.startfile(caminho)
+            return f"Abrindo {nome_aplicativo}."
         else:
-            speak("Comando não reconhecido.")
-            display_message("Shuvi: Comando não reconhecido.")
-    except sr.UnknownValueError:
-        speak("Desculpe, não consegui entender.")
-        display_message("Shuvi: Não consegui entender o comando.")
-    except sr.RequestError:
-        speak("Erro ao conectar ao serviço de reconhecimento de voz.")
-        display_message("Shuvi: Erro ao conectar ao serviço.")
+            return f"Desculpe, não sei abrir o aplicativo '{nome_aplicativo}'."
+    except Exception as e:
+        return f"Erro ao tentar abrir {nome_aplicativo}: {str(e)}"
 
+# Função para realizar pesquisas
+def realizar_pesquisa(termo_pesquisa):
+    try:
+        url = f"https://www.google.com/search?q={termo_pesquisa}"
+        webbrowser.open(url)
+        return f"Pesquisando por '{termo_pesquisa}' no Google."
+    except Exception as e:
+        return f"Erro ao realizar pesquisa: {str(e)}"
 
-def iniciar_reconhecimento():
-    threading.Thread(target=reconhecer_comando, daemon=True).start()
+# Inicializar o motor de fala
+engine = pyttsx3.init()
 
-# chamndo pelo botão de envio
+# Função para falar
+def speak(texto):
+    engine.say(texto)
+    engine.runAndWait()
+
+# Função para exibir mensagens na janela de chat
+def display_message(message):
+    chat_window.config(state="normal")  # Habilitar edição temporária
+    chat_window.insert(tk.END, message + "\n")  # Adicionar mensagem
+    chat_window.config(state="disabled")  # Desabilitar edição novamente
+    chat_window.see(tk.END)  # Rolar até a última mensagem
+
+# Função chamada pelo botão de envio
 def on_button_click():
-    user_input = entry.get()
-    if user_input.strip():
+    user_input = entry.get().strip()  # Entrada do usuário
+    if user_input:
         display_message(f"Você: {user_input}")
-        # Aqui você pode adicionar lógica para a resposta da IA
-        if "oi" in user_input.lower():
-            resposta = "Olá! Como posso te ajudar?"
-        elif "ajuda" in user_input.lower():
-            resposta = "Claro, me diga no que você precisa de suporte."
-        else:
-            resposta = "Desculpe, não entendi sua solicitação."
+        resposta = processar_entrada(user_input)
         display_message(f"Shuvi: {resposta}")
         speak(resposta)
     entry.delete(0, tk.END)
 
+# Função para iniciar o reconhecimento de voz
+def iniciar_reconhecimento():
+    def reconhecer_comando():
+        recognizer = sr.Recognizer()
+        with sr.Microphone() as source:
+            display_message("Shuvi: Aguardando comando de voz...")
+            try:
+                audio = recognizer.listen(source)
+                comando = recognizer.recognize_google(audio, language="pt-BR").lower()
+                display_message(f"Você disse: {comando}")
+                resposta = processar_entrada(comando)
+                display_message(f"Shuvi: {resposta}")
+                speak(resposta)
+            except sr.UnknownValueError:
+                speak("Desculpe, não consegui entender.")
+                display_message("Shuvi: Não consegui entender o comando.")
+            except sr.RequestError:
+                speak("Erro ao conectar ao serviço de reconhecimento de voz.")
+                display_message("Shuvi: Erro ao conectar ao serviço de reconhecimento de voz.")
 
-def display_message(message):
-    chat_window.configure(state="normal")
-    chat_window.insert(tk.END, f"{message}\n")
-    chat_window.configure(state="disabled")
-    chat_window.see(tk.END)
+    # Executar o reconhecimento de voz em uma thread
+    threading.Thread(target=reconhecer_comando, daemon=True).start()
 
-
+# Configuração da janela principal
 root = tk.Tk()
 root.title("Assistente Shuvi")
 root.geometry("500x400")
 
-# Chat
+# Janela de chat
 chat_window = tk.Text(root, state="disabled", wrap="word", bg="lightyellow", fg="black")
 chat_window.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-# Bloco para chat
+# Caixa de entrada de texto
 entry = tk.Entry(root, width=50)
 entry.pack(pady=5)
 entry.focus()  # Foca a entrada de texto ao iniciar o programa
 
-# Botão para enviar
+# Botão para enviar texto
 button = tk.Button(root, text="Enviar", command=on_button_click)
 button.pack(pady=5)
 
-# Botão para ativar comando de voz
+# Botão para ativar reconhecimento de voz
 botao_voz = tk.Button(root, text="Ativar Shuvi por Voz", command=iniciar_reconhecimento)
 botao_voz.pack(pady=10)
 
+# Iniciando o loop da interface gráfica
 root.mainloop()
