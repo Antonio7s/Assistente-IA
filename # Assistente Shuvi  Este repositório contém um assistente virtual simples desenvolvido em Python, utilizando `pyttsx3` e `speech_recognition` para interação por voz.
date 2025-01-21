@@ -9,16 +9,15 @@ import difflib
 import os
 import webbrowser
 
-# Configuração do Pyttsx3 para resposta de voz
+# Configuração para resposta de voz
 engine = pyttsx3.init()
 engine.setProperty("rate", 150)  # Velocidade da fala
 
-# Função para sintetizar voz
 def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-# Atualização no dicionário de memória 
+# Dicionário de memória 
 memoria_shuvi = {
     "frases": {
         "saudacao": [
@@ -96,7 +95,7 @@ memoria_shuvi = {
     }
 }
 
-# Função para carregar memória de aprendizado de um arquivo JSON
+# Função para carregar aprendizado de um arquivo JSON
 def carregar_memoria():
     try:
         with open("memoria_shuvi.json", "r") as file:
@@ -104,15 +103,15 @@ def carregar_memoria():
     except FileNotFoundError:
         return {"palavras": {}, "frases": {"comando_nao_reconhecido": []}}  # Retorna uma memória padrão se o arquivo não existir
 
-# Função para salvar memória de aprendizado em um arquivo JSON
+
 def salvar_memoria():
     with open("memoria_shuvi.json", "w") as file:
         json.dump(memoria_shuvi, file, indent=4)
 
-# Carregar memória ao iniciar
+# Memória ao iniciar
 memoria_shuvi = carregar_memoria()
 
-# Função para encontrar a melhor correspondência
+
 def encontrar_melhor_correspondencia(user_input_clean):
     melhor_categoria = None
     maior_similaridade = 0.0
@@ -124,14 +123,14 @@ def encontrar_melhor_correspondencia(user_input_clean):
                 melhor_categoria = categoria
     return melhor_categoria if maior_similaridade > 0.6 else None
 
-# Função para responder com frases aleatórias
+
 def responder(tipo):
     if tipo in memoria_shuvi["frases"]:
         return random.choice(memoria_shuvi["frases"][tipo])
     else:
         return "Desculpe, não tenho uma resposta para isso."
 
-# Função para processar a entrada do usuário
+
 def processar_entrada(user_input):
     user_input_clean = unidecode.unidecode(user_input.lower())  # Normalizar entrada
 
@@ -140,7 +139,7 @@ def processar_entrada(user_input):
         if any(palavra in user_input_clean for palavra in palavras):
             return responder(categoria)
 
-    # Buscar melhor correspondência com base na similaridade
+  
     melhor_categoria = encontrar_melhor_correspondencia(user_input_clean)
     if melhor_categoria:
         return responder(melhor_categoria)
@@ -151,22 +150,22 @@ def processar_entrada(user_input):
     if "como voce esta" in user_input_clean:
         return "Estou bem, obrigado por perguntar!"
 
-    # Comando para abrir aplicativos
+    # Abrir aplicativos
     if "abrir" in user_input_clean:
         nome_aplicativo = user_input_clean.replace("abrir", "").strip()
         return abrir_aplicativo(nome_aplicativo)
 
-    # Comando para realizar pesquisas
+
     if "pesquisar" in user_input_clean:
         termo_pesquisa = user_input_clean.replace("pesquisar", "").strip()
         return realizar_pesquisa(termo_pesquisa)
 
-    # Aprender novas palavras ou frases
+
     memoria_shuvi["frases"]["comando_nao_reconhecido"].append(user_input)
     salvar_memoria()  # Salva a memória atualizada
     return "Desculpe, não conheço essa frase. Vou me lembrar para a próxima vez."
  
-    # Função para abrir aplicativos
+
 def abrir_aplicativo(nome_aplicativo):
     try:
         caminhos_aplicativos = {
@@ -183,7 +182,7 @@ def abrir_aplicativo(nome_aplicativo):
     except Exception as e:
         return f"Erro ao tentar abrir {nome_aplicativo}: {str(e)}"
 
-# Função para realizar pesquisas
+
 def realizar_pesquisa(termo_pesquisa):
     try:
         url = f"https://www.google.com/search?q={termo_pesquisa}"
@@ -192,22 +191,22 @@ def realizar_pesquisa(termo_pesquisa):
     except Exception as e:
         return f"Erro ao realizar pesquisa: {str(e)}"
 
-# Inicializar o motor de fala
+# Inicializar fala
 engine = pyttsx3.init()
 
-# Função para falar
+
 def speak(texto):
     engine.say(texto)
     engine.runAndWait()
 
-# Função para exibir mensagens na janela de chat
+
 def display_message(message):
     chat_window.config(state="normal")  # Habilitar edição temporária
     chat_window.insert(tk.END, message + "\n")  # Adicionar mensagem
     chat_window.config(state="disabled")  # Desabilitar edição novamente
     chat_window.see(tk.END)  # Rolar até a última mensagem
 
-# Função chamada pelo botão de envio
+
 def on_button_click():
     user_input = entry.get().strip()  # Entrada do usuário
     if user_input:
@@ -217,7 +216,7 @@ def on_button_click():
         speak(resposta)
     entry.delete(0, tk.END)
 
-# Função para iniciar o reconhecimento de voz
+
 def iniciar_reconhecimento():
     def reconhecer_comando():
         recognizer = sr.Recognizer()
@@ -237,28 +236,28 @@ def iniciar_reconhecimento():
                 speak("Erro ao conectar ao serviço de reconhecimento de voz.")
                 display_message("Shuvi: Erro ao conectar ao serviço de reconhecimento de voz.")
 
-    # Executar o reconhecimento de voz em uma thread
+    # Reconhecimento de voz em uma thread
     threading.Thread(target=reconhecer_comando, daemon=True).start()
 
-# Configuração da janela principal
+
 root = tk.Tk()
 root.title("Assistente Shuvi")
 root.geometry("500x400")
 
-# Janela de chat
+# Janela 
 chat_window = tk.Text(root, state="disabled", wrap="word", bg="lightyellow", fg="black")
 chat_window.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-# Caixa de entrada de texto
+# Entrada de texto
 entry = tk.Entry(root, width=50)
 entry.pack(pady=5)
 entry.focus()  # Foca a entrada de texto ao iniciar o programa
 
-# Botão para enviar texto
+# Botão 
 button = tk.Button(root, text="Enviar", command=on_button_click)
 button.pack(pady=5)
 
-# Botão para ativar reconhecimento de voz
+# Botão para reconhecimento de voz
 botao_voz = tk.Button(root, text="Ativar Shuvi por Voz", command=iniciar_reconhecimento)
 botao_voz.pack(pady=10)
 
